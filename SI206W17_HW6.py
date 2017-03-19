@@ -161,7 +161,7 @@ print("\n\n***** Problem 9 *****")
 
 ## Note that you can use another list you have already created for this problem.
 
-names_with_not_too_much_seniority = [x.name for x in programmers if len(x.name) >= x.years_UM]
+names_with_not_too_much_seniority = [x.name for x in programmers if len(x.name) > x.years_UM]
 print(names_with_not_too_much_seniority)
 
 
