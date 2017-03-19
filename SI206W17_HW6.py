@@ -60,7 +60,6 @@ print("\n\n***** Problem 2 *****")
 ## The function should return the new list of accumulated -- mapped! -- values.
 ## HINT: you should be able to write this in 5 lines of code or fewer! 
 def personal_map(func, lst):
-    #new_list = list(map(lambda x: func(x), lst))
     new_list = []
     for x in lst: 
         new_list.append(func(x))
@@ -80,7 +79,7 @@ print("\n\n***** Problem 3 *****")
 
 ## Provided, do not change:
 def access_third_elem(seq):
-    return seq[2] # S note: returns third element in sequence 
+    return seq[2]
 ## End
 thing = [0,1,3,4,5,6,7]
 print(access_third_elem(thing))
@@ -105,9 +104,8 @@ student_tups_list = list(student_tups)
 
 
 ## You can test this out with any code you like here, and similar below other problems, but make sure to comment out any code that uses up the iterator in order to pass the tests!
-print(student_tups)
 print(student_tups_list)
-print(student_tups_list[0][0])
+
 
 
 ## [PROBLEM 5]
@@ -115,10 +113,8 @@ print("\n\n***** Problem 5 *****")
 # Use a list comprehension to create a list of Student instances out of the student_tups list you just created in Problem 2, and save that list in a variable called programmers. You should make sure you pass these tests before continuing, as you'll need this list for problems later on!
 programmers = [Student(x[0],x[1],x[2]) for x in student_tups_list]
 
-#S testing 
-for element in programmers:
+for element in programmers: 
     print(element.name)
-
 
 
 ## [PROBLEM 6]
@@ -143,10 +139,6 @@ print("\n\n***** Problem 7 *****")
 # Create a list of tuples wherein each tuple has a student's name and productivity value. Save the list of tuples in a variable called names_and_productivities. To do this, you should use a list comprehension (you may also use the zip function, and you may use any variables you have already created).
 
 ## But be careful that if you use answers from previous problems, you use the LISTs you generated, so that all your tests can still pass and you avoid confusion!
-#productivity_value = [x.num_programs/x.years_UM for x in prod_list]
-#student_name = [x.name for x in programmers]
-
-#names_and_productivities = list(zip(student_name, prod_list))
 names_and_productivities = [(x.name, x.num_programs/x.years_UM) for x in programmers]
 print(names_and_productivities)
 
@@ -159,9 +151,7 @@ long_names = filter(lambda x: len(x.name) > 5, programmers)
 
 ## Then write code to cast the value of long_names to a list and save it in the variable long_names_list. 
 long_names_list = list(long_names)
-print(long_names_list)
-for x in long_names_list:
-    print(x.name)
+
 
 
 ## [PROBLEM 9]
@@ -196,7 +186,7 @@ def readfiles(lst_filenames):
     for each_file in lst_filenames: 
         fileref = open(each_file, 'r')
         for line in fileref: 
-            yield line #yields a generator 
+            yield line 
         fileref.close()
 
 # Define len_check
