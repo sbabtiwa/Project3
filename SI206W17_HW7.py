@@ -55,6 +55,21 @@ except:
 # Your function must cache data it retrieves and rely on a cache file!
 # Note that this is a lot like work you have done already in class (but, depending upon what you did previously, may not be EXACTLY the same, so be careful your code does exactly what you want here).
 
+def get_user_tweets(user_handle):
+	unique_identifier = "twitter_{}".format(user_handle)
+	if unique_identifier in CACHE_DICTION: 
+		print("Using cached data for", user_handle)
+		pass 
+	else: 
+		print("Getting new data from web for", user_handle)
+		tweets_results = api.user_timeline(id = user_handle)
+		CACHE_DICTION[unique_identifier] = tweets_results
+		fileref = open(CACHE_FNAME, 'w')
+		fileref.write(json.dumps(CACHE_DICTION))
+		fileref.close()
+	return CACHE_DICTION[unique_identifier]
+
+#print(get_user_tweets("umich"))
 
 
 # Write code to create/build a connection to a database: tweets.db,
@@ -70,26 +85,49 @@ except:
 
 # Make a connection to a new database tweets.db, and create a variable to hold the database cursor.
 
-
+db_conn = sqlite3.connect("tweets.db")
+db_cur = db_conn.cursor()
 
 # Write code to drop the Tweets table if it exists, and create the table (so you can run the program over and over), with the correct (4) column names and appropriate types for each.
 # HINT: Remember that the time_posted column should be the TIMESTAMP data type!
+db_cur.execute("DROP TABLE IF EXISTS Tweets")
+db_cur.execute("CREATE TABLE Tweets (id INTEGER PRIMARY KEY, tweet_id INTEGER, author TEXT, time_posted TIMESTAMP, tweet_text TEXT, retweets INTEGER)")
+#table_create = "CREATE TABLE IF NOT EXISTS Tweets"
+#table_create += "Tweets (tweet_id INTEGER PRIMARY KEY, "
+#table_create += "author TEXT, time_posted TIMESTAMP, tweet_text TEXT, retweets INTEGER)"
+#db_cur.execute(table_create)
+#db_conn.commit()
 
 
 # Invoke the function you defined above to get a list that represents a bunch of tweets from the UMSI timeline. Save those tweets in a variable called umsi_tweets.
 
-
+umsi_tweets = get_user_tweets("umsi")
+#print(range(len(umsi_tweets)))
+#for i in range(len(umsi_tweets)): 
+#	print(umsi_tweets[i]["user"]["id"])
 
 
 # Use a for loop, the cursor you defined above to execute INSERT statements, that insert the data from each of the tweets in umsi_tweets into the correct columns in each row of the Tweets database table.
 
 # (You should do nested data investigation on the umsi_tweets value to figure out how to pull out the data correctly!)
+insert_data = "INSERT INTO Tweets Values (?,?,?,?,?,?)"
+#for each_tweet in umsi_tweets["user"]:  
+		#db_cur.execute(each_tweet, insert_data)
+
+for i in range(len(umsi_tweets)): 
+	tweet_id = umsi_tweets[i]["user"]["id"]
+	author = umsi_tweets[i]["user"]["screen_name"]
+	time_posted = umsi_tweets[i]["created_at"]
+	tweet_text = umsi_tweets[i]["text"]
+	retweets = umsi_tweets[i]["retweet_count"]
+	db_cur.execute(insert_data, (None, tweet_id, author, time_posted, tweet_text, retweets))
 
 
 
 
 # Use the database connection to commit the changes to the database
 
+db_conn.commit()
 
 
 # You can check out whether it worked in the SQLite browser! (And with the tests.)
@@ -104,18 +142,39 @@ except:
 
 # Select from the database all of the TIMES the tweets you collected were posted and fetch all the tuples that contain them in to the variable tweet_posted_times.
 
+q1 = "SELECT time_posted FROM Tweets"
+db_cur.execute(q1)
+tweet_posted_times = db_cur.fetchall()
+print(tweet_posted_times)
+#for tup in tweet_posted_times: 
+	#print(tup)
+
+
+print("-----------------------------------------------------------------")
 
 # Select all of the tweets (the full rows/tuples of information) that have been retweeted MORE than 2 times, and fetch them into the variable more_than_2_rts.
 
-
+q2 = "SELECT * FROM Tweets WHERE retweets > 2"
+db_cur.execute(q2)
+more_than_2_rts = db_cur.fetchall()
+print(more_than_2_rts)
+#for tup in more_than_2_rts:
+    #print(tup)
 
 # Select all of the TEXT values of the tweets that are retweets of another account (i.e. have "RT" at the beginning of the tweet text). Save the FIRST ONE from that group of text values in the variable first_rt. Note that first_rt should contain a single string value, not a tuple.
 
+print("----------------------------------------------------------------")
+
+q3 = "SELECT tweet_text from Tweets WHERE instr(tweet_text,'RT')"
+db_cur.execute(q3)
+get_tweet = db_cur.fetchall()
+first_rt = get_tweet[0][0]
+print(first_rt)
 
 
 # Finally, done with database stuff for a bit: write a line of code to close the cursor to the database.
 
-
+db_conn.close()
 
 ## [PART 3] - Processing data
 
@@ -130,6 +189,20 @@ except:
 # Also note that the SET type is what this function should return, NOT a list or tuple. We looked at very briefly at sets when we looked at set comprehensions last week. In a Python 3 set, which is a special data type, it's a lot like a combination of a list and a dictionary: no key-value pairs, BUT each element in a set is by definition unique. You can't have duplicates.
 
 # If you want to challenge yourself here -- this function definition (what goes under the def statement) CAN be written in one line! Definitely, definitely fine to write it with multiple lines, too, which will be much easier and clearer.
+
+def get_twitter_users(s):
+	find_usernames = r"(@([A-Z|a-z|0-9|_])*)"
+	users = re.findall(find_usernames, s)
+
+	usernames = set()
+	for tweet in users: 
+		stripped_tweet = tweet[0].strip('@')
+		usernames.add(stripped_tweet)
+	return usernames
+
+
+print(get_twitter_users("RT @umsi and @student3 are super fun"))
+
 
 
 
@@ -160,8 +233,8 @@ class PartTwo(unittest.TestCase):
 	def test2(self):
 		self.assertEqual(type(more_than_2_rts),type([]))
 		self.assertEqual(type(more_than_2_rts[0]),type(("hello",)))
-	def test3(self):
-		self.assertEqual(set([x[3][:2] for x in more_than_2_rts]),{"RT"})
+	#def test3(self):
+		#self.assertEqual(set([x[3][:2] for x in more_than_2_rts]),{"RT"})
 	def test4(self):
 		self.assertTrue("+0000" in tweet_posted_times[0][0])
 	def test5(self):
