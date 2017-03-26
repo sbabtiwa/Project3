@@ -69,7 +69,7 @@ def get_user_tweets(user_handle):
 		fileref.close()
 	return CACHE_DICTION[unique_identifier]
 
-#print(get_user_tweets("umich"))
+
 
 
 # Write code to create/build a connection to a database: tweets.db,
@@ -90,30 +90,23 @@ db_cur = db_conn.cursor()
 
 # Write code to drop the Tweets table if it exists, and create the table (so you can run the program over and over), with the correct (4) column names and appropriate types for each.
 # HINT: Remember that the time_posted column should be the TIMESTAMP data type!
+
 db_cur.execute("DROP TABLE IF EXISTS Tweets")
 db_cur.execute("CREATE TABLE Tweets (id INTEGER PRIMARY KEY, tweet_id INTEGER, author TEXT, time_posted TIMESTAMP, tweet_text TEXT, retweets INTEGER)")
-#table_create = "CREATE TABLE IF NOT EXISTS Tweets"
-#table_create += "Tweets (tweet_id INTEGER PRIMARY KEY, "
-#table_create += "author TEXT, time_posted TIMESTAMP, tweet_text TEXT, retweets INTEGER)"
-#db_cur.execute(table_create)
-#db_conn.commit()
+
 
 
 # Invoke the function you defined above to get a list that represents a bunch of tweets from the UMSI timeline. Save those tweets in a variable called umsi_tweets.
 
 umsi_tweets = get_user_tweets("umsi")
-#print(range(len(umsi_tweets)))
-#for i in range(len(umsi_tweets)): 
-#	print(umsi_tweets[i]["user"]["id"])
+
 
 
 # Use a for loop, the cursor you defined above to execute INSERT statements, that insert the data from each of the tweets in umsi_tweets into the correct columns in each row of the Tweets database table.
 
 # (You should do nested data investigation on the umsi_tweets value to figure out how to pull out the data correctly!)
-insert_data = "INSERT INTO Tweets Values (?,?,?,?,?,?)"
-#for each_tweet in umsi_tweets["user"]:  
-		#db_cur.execute(each_tweet, insert_data)
 
+insert_data = "INSERT INTO Tweets Values (?,?,?,?,?,?)"
 for i in range(len(umsi_tweets)): 
 	tweet_id = umsi_tweets[i]["user"]["id"]
 	author = umsi_tweets[i]["user"]["screen_name"]
@@ -146,11 +139,10 @@ q1 = "SELECT time_posted FROM Tweets"
 db_cur.execute(q1)
 tweet_posted_times = db_cur.fetchall()
 print(tweet_posted_times)
-#for tup in tweet_posted_times: 
-	#print(tup)
 
 
-print("-----------------------------------------------------------------")
+
+
 
 # Select all of the tweets (the full rows/tuples of information) that have been retweeted MORE than 2 times, and fetch them into the variable more_than_2_rts.
 
@@ -158,12 +150,9 @@ q2 = "SELECT * FROM Tweets WHERE retweets > 2"
 db_cur.execute(q2)
 more_than_2_rts = db_cur.fetchall()
 print(more_than_2_rts)
-#for tup in more_than_2_rts:
-    #print(tup)
+
 
 # Select all of the TEXT values of the tweets that are retweets of another account (i.e. have "RT" at the beginning of the tweet text). Save the FIRST ONE from that group of text values in the variable first_rt. Note that first_rt should contain a single string value, not a tuple.
-
-print("----------------------------------------------------------------")
 
 q3 = "SELECT tweet_text from Tweets WHERE instr(tweet_text,'RT')"
 db_cur.execute(q3)
@@ -191,7 +180,7 @@ db_conn.close()
 # If you want to challenge yourself here -- this function definition (what goes under the def statement) CAN be written in one line! Definitely, definitely fine to write it with multiple lines, too, which will be much easier and clearer.
 
 def get_twitter_users(s):
-	find_usernames = r"(@([A-Z|a-z|0-9|_])*)"
+	find_usernames = r"(@([A-Z|a-z|0-9_])*)"
 	users = re.findall(find_usernames, s)
 
 	usernames = set()
@@ -201,8 +190,7 @@ def get_twitter_users(s):
 	return usernames
 
 
-print(get_twitter_users("RT @umsi and @student3 are super fun"))
-
+print(get_twitter_users("@twitter_user_4, what did you think of the comment by @twitteruser5?"))
 
 
 
