@@ -39,15 +39,35 @@ api = tweepy.API(auth, parser=tweepy.parsers.JSONParser())
 
 CACHE_FNAME = "SI206_project3_cache.json"
 # Put the rest of your caching setup here:
+try:
+	cache_file = open(CACHE_FNAME,'r')
+	cache_contents = cache_file.read()
+	cache_file.close()
+	CACHE_DICT = json.loads(cache_contents)
+except:
+	CACHE_DICT = {}
 
 
 # Define your function get_user_tweets here:
-
+def get_user_tweets(user_handle):
+	unique_identifier = "twitter_{}".format(user_handle)
+	if unique_identifier in CACHE_DICT: 
+		print("Using cached data for", user_handle)
+		pass 
+	else: 
+		print("Getting new data from web for", user_handle)
+		tweets_results = api.user_timeline(id = user_handle)
+		CACHE_DICT[unique_identifier] = tweets_results
+		fileref = open(CACHE_FNAME, 'w')
+		fileref.write(json.dumps(CACHE_DICT))
+		fileref.close()
+	return CACHE_DICT[unique_identifier]
 
 
 
 # Write an invocation to the function for the "umich" user timeline and save the result in a variable called umich_tweets:
 
+umich_tweets = get_user_tweets("umich")
 
 
 
@@ -60,7 +80,7 @@ CACHE_FNAME = "SI206_project3_cache.json"
 # table Tweets, with columns:
 # - tweet_id (containing the string id belonging to the Tweet itself, from the data you got from Twitter) -- this column should be the PRIMARY KEY of this table
 # - text (containing the text of the Tweet)
-# - user_posted (an ID string, referencing the Users table, see below)
+# - user_id (an ID string, referencing the Users table, see below)
 # - time_posted (the time at which the tweet was created)
 # - retweets (containing the integer representing the number of times the tweet has been retweeted)
 
@@ -81,7 +101,72 @@ CACHE_FNAME = "SI206_project3_cache.json"
 ## HINT: There's a Tweepy method to get user info that we've looked at before, so when you have a user id or screenname you can find alllll the info you want about the user.
 ## HINT #2: You may want to go back to a structure we used in class this week to ensure that you reference the user correctly in each Tweet record.
 ## HINT #3: The users mentioned in each tweet are included in the tweet dictionary -- you don't need to do any manipulation of the Tweet text to find out which they are! Do some nested data investigation on a dictionary that represents 1 tweet to see it!
+db_conn = sqlite3.connect("project3_tweets.db")
+db_cur = db_conn.cursor()
 
+db_cur.execute("DROP TABLE IF EXISTS Tweets")
+db_cur.execute("CREATE TABLE Tweets (tweet_id TEXT PRIMARY KEY, tweet_text TEXT, time_posted TIMESTAMP, retweets INTEGER, user_id TEXT NOT NULL, FOREIGN KEY (user_id) REFERENCES Users (user_id))")
+
+db_cur.execute("DROP TABLE IF EXISTS Users")
+db_cur.execute("CREATE TABLE Users (user_id TEXT PRIMARY KEY, screen_name TEXT, num_favs INTEGER, description TEXT)")
+
+insert_tweet_data = "INSERT INTO Tweets Values (?,?,?,?,?)"
+for i in range(len(umich_tweets)): 
+	tweet_id = umich_tweets[i]["id_str"]
+	tweet_text = umich_tweets[i]["text"]
+	user_id = umich_tweets[i]["user"]["id_str"]
+	time_posted = umich_tweets[i]["created_at"]
+	retweets = umich_tweets[i]["retweet_count"]
+	db_cur.execute(insert_tweet_data, (tweet_id, tweet_text, time_posted, retweets, user_id))
+
+db_conn.commit()
+
+#insert_userid_data = "INSERT OR IGNORE INTO Users Values (?)"
+#for i in range(len(umich_tweets)):
+	#user_id = umich_tweets[i]["user"]["id_str"]
+	#db_cur.execute(insert_userid_data, user_id)
+
+#db_conn.commit()
+
+
+
+user_id = []
+screen_name = []
+num_favs = []
+description = []
+
+
+for x in umich_tweets: 
+	#user_id.append(x["user"]["id_str"])
+	#screen_name.append(x["user"]["screen_name"])
+	#num_favs.append(x["user"]["favourites_count"])
+	#description.append(x["user"]["description"])
+	for element in x["entities"]["user_mentions"]:
+		user_id.append(element["id_str"])
+		screen_name.append(element["screen_name"])
+		user_favs = api.favorites(element["screen_name"])
+		num_favs.append(len(user_favs))
+		user_description = api.get_user(element["screen_name"])
+		description.append(user_description["description"])
+
+		#description.append()
+		
+
+
+all_users = zip(user_id, screen_name, num_favs, description)
+insert_user_data = "INSERT OR IGNORE INTO Users Values (?,?,?,?)"
+for y in all_users: 
+	db_cur.execute(insert_user_data, y)
+db_conn.commit()
+
+
+	
+	
+	#db_cur.execute(insert_user_data, (user_id, screen_name, num_favs, description))
+
+#db_conn.commit()
+
+#print(api.get_user("88836132"))
 
 
 
@@ -93,21 +178,50 @@ CACHE_FNAME = "SI206_project3_cache.json"
 # All of the following sub-tasks require writing SQL statements and executing them using Python.
 
 # Make a query to select all of the records in the Users database. Save the list of tuples in a variable called users_info.
+print("USERS INFO")
+
+q1 = "SELECT * FROM Users"
+db_cur.execute(q1)
+users_info = db_cur.fetchall()
+print(users_info) 
 
 # Make a query to select all of the user screen names from the database. Save a resulting list of strings (NOT tuples, the strings inside them!) in the variable screen_names. HINT: a list comprehension will make this easier to complete!
+
+print("SCREEN NAMES")
+
+q2 = "SELECT screen_name FROM Users"
+db_cur.execute(q2)
+all_screen_names = db_cur.fetchall()
+screen_names = [element[0] for element in all_screen_names]
+print(screen_names)
 
 
 # Make a query to select all of the tweets (full rows of tweet information) that have been retweeted more than 25 times. Save the result (a list of tuples, or an empty list) in a variable called more_than_25_rts.
 
+print("MORE 25")
 
+q3 = "SELECT * FROM Tweets WHERE retweets > 5"
+db_cur.execute(q3)
+more_than_25_rts = db_cur.fetchall()
+print(more_than_25_rts)
 
 # Make a query to select all the descriptions (descriptions only) of the users who have favorited more than 25 tweets. Access all those strings, and save them in a variable called descriptions_fav_users, which should ultimately be a list of strings.
+print("DESCRIPTIONS")
 
+q4 = "SELECT description FROM Users WHERE num_favs > 5"
+db_cur.execute(q4)
+all_descriptions = db_cur.fetchall()
+descriptions_fav_users = [x[0] for x in all_descriptions] 
+print(descriptions_fav_users)
 
 
 # Make a query using an INNER JOIN to get a list of tuples with 2 elements in each tuple: the user screenname and the text of the tweet -- for each tweet that has been retweeted more than 50 times. Save the resulting list of tuples in a variable called joined_result.
+print("JOINED RESULT")
 
-
+q5 = "SELECT Users.screen_name, Tweets.tweet_text FROM Tweets INNER JOIN Users ON Tweets.user_id = Users.user_id WHERE Tweets.retweets > 50"
+db_cur.execute(q5)
+joined_result = db_cur.fetchall()
+print(joined_result)
 
 
 ## Task 4 - Manipulating data with comprehensions & libraries
@@ -115,9 +229,7 @@ CACHE_FNAME = "SI206_project3_cache.json"
 ## Use a set comprehension to get a set of all words (combinations of characters separated by whitespace) among the descriptions in the descriptions_fav_users list. Save the resulting set in a variable called description_words.
 
 
-
 ## Use a Counter in the collections library to find the most common character among all of the descriptions in the descriptions_fav_users list. Save that most common character in a variable called most_common_char. Break any tie alphabetically (but using a Counter will do a lot of work for you...).
-
 
 
 ## Putting it all together...
