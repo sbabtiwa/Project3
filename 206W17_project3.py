@@ -104,31 +104,11 @@ umich_tweets = get_user_tweets("umich")
 db_conn = sqlite3.connect("project3_tweets.db")
 db_cur = db_conn.cursor()
 
-db_cur.execute("DROP TABLE IF EXISTS Tweets")
-db_cur.execute("CREATE TABLE Tweets (tweet_id TEXT PRIMARY KEY, tweet_text TEXT, time_posted TIMESTAMP, retweets INTEGER, user_id TEXT NOT NULL, FOREIGN KEY (user_id) REFERENCES Users (user_id))")
-
 db_cur.execute("DROP TABLE IF EXISTS Users")
 db_cur.execute("CREATE TABLE Users (user_id TEXT PRIMARY KEY, screen_name TEXT, num_favs INTEGER, description TEXT)")
 
-insert_tweet_data = "INSERT INTO Tweets Values (?,?,?,?,?)"
-for i in range(len(umich_tweets)): 
-	tweet_id = umich_tweets[i]["id_str"]
-	tweet_text = umich_tweets[i]["text"]
-	user_id = umich_tweets[i]["user"]["id_str"]
-	time_posted = umich_tweets[i]["created_at"]
-	retweets = umich_tweets[i]["retweet_count"]
-	db_cur.execute(insert_tweet_data, (tweet_id, tweet_text, time_posted, retweets, user_id))
-
-db_conn.commit()
-
-#insert_userid_data = "INSERT OR IGNORE INTO Users Values (?)"
-#for i in range(len(umich_tweets)):
-	#user_id = umich_tweets[i]["user"]["id_str"]
-	#db_cur.execute(insert_userid_data, user_id)
-
-#db_conn.commit()
-
-
+db_cur.execute("DROP TABLE IF EXISTS Tweets")
+db_cur.execute("CREATE TABLE Tweets (tweet_id TEXT PRIMARY KEY, tweet_text TEXT, time_posted TIMESTAMP, retweets INTEGER, user_id TEXT NOT NULL, FOREIGN KEY (user_id) REFERENCES Users (user_id))")
 
 user_id = []
 screen_name = []
@@ -136,41 +116,60 @@ num_favs = []
 description = []
 
 
-for x in umich_tweets: 
-	#user_id.append(x["user"]["id_str"])
-	#screen_name.append(x["user"]["screen_name"])
-	#num_favs.append(x["user"]["favourites_count"])
-	#description.append(x["user"]["description"])
+for x in umich_tweets:
 	for element in x["entities"]["user_mentions"]:
 		user_id.append(element["id_str"])
 		screen_name.append(element["screen_name"])
-		user_favs = api.favorites(element["screen_name"])
-		num_favs.append(len(user_favs))
-		user_description = api.get_user(element["screen_name"])
-		description.append(user_description["description"])
-
-		#description.append()
-		
-
+		unique_identifier = "twitter_{}".format(element["screen_name"])
+		print(unique_identifier)
+		if unique_identifier in CACHE_DICT: 
+			print("Using cached data for", element["screen_name"])
+			pass 
+		else:
+			print("Getting new data from web for", element["screen_name"])
+			user_favs = api.favorites(element["screen_name"])
+			user_description = api.get_user(element["screen_name"])
+			CACHE_DICT[unique_identifier] = {}
+			CACHE_DICT[unique_identifier]["favs"]= user_favs
+			CACHE_DICT[unique_identifier]["description"] = user_description
+			fileref = open(CACHE_FNAME, 'w')
+			fileref.write(json.dumps(CACHE_DICT))
+			fileref.close()
+		num_favs.append(len(CACHE_DICT[unique_identifier]["favs"]))
+		description.append(CACHE_DICT[unique_identifier]["description"]['description'])
 
 all_users = zip(user_id, screen_name, num_favs, description)
+list_all_users = list(all_users)
 insert_user_data = "INSERT OR IGNORE INTO Users Values (?,?,?,?)"
-for y in all_users: 
+for y in list_all_users:
+	print(y)
 	db_cur.execute(insert_user_data, y)
+
+
+
+
+tweet_id = []
+tweet_text = []
+time_posted = []
+retweets = []
+user_id = []
+
+for element in umich_tweets:
+	tweet_id.append(element["id_str"])
+	tweet_text.append(element["text"])
+	time_posted.append(element["created_at"])
+	retweets.append(element["retweet_count"])
+	user_id.append(element["user"]["id_str"])
+
+all_tweets = zip(tweet_id, tweet_text, time_posted, retweets, user_id)
+list_all_tweets = list(all_tweets)
+print (len(list_all_tweets))
+insert_tweet_data = "INSERT INTO Tweets Values (?,?,?,?,?)"
+for x in list_all_tweets:
+	print(x) 
+	db_cur.execute(insert_tweet_data, x)
+
 db_conn.commit()
-
-
-	
-	
-	#db_cur.execute(insert_user_data, (user_id, screen_name, num_favs, description))
-
-#db_conn.commit()
-
-#print(api.get_user("88836132"))
-
-
-
-
 
 
 ## Task 3 - Making queries, saving data, fetching data
@@ -183,7 +182,8 @@ print("USERS INFO")
 q1 = "SELECT * FROM Users"
 db_cur.execute(q1)
 users_info = db_cur.fetchall()
-print(users_info) 
+print(users_info)
+
 
 # Make a query to select all of the user screen names from the database. Save a resulting list of strings (NOT tuples, the strings inside them!) in the variable screen_names. HINT: a list comprehension will make this easier to complete!
 
@@ -193,7 +193,7 @@ q2 = "SELECT screen_name FROM Users"
 db_cur.execute(q2)
 all_screen_names = db_cur.fetchall()
 screen_names = [element[0] for element in all_screen_names]
-print(screen_names)
+print(all_screen_names)
 
 
 # Make a query to select all of the tweets (full rows of tweet information) that have been retweeted more than 25 times. Save the result (a list of tuples, or an empty list) in a variable called more_than_25_rts.
@@ -218,7 +218,7 @@ print(descriptions_fav_users)
 # Make a query using an INNER JOIN to get a list of tuples with 2 elements in each tuple: the user screenname and the text of the tweet -- for each tweet that has been retweeted more than 50 times. Save the resulting list of tuples in a variable called joined_result.
 print("JOINED RESULT")
 
-q5 = "SELECT Users.screen_name, Tweets.tweet_text FROM Tweets INNER JOIN Users ON Tweets.user_id = Users.user_id WHERE Tweets.retweets > 50"
+q5 = "SELECT Users.screen_name, Tweets.tweet_text FROM Tweets INNER JOIN Users ON Tweets.user_id = Users.user_id WHERE Tweets.retweets > 5"
 db_cur.execute(q5)
 joined_result = db_cur.fetchall()
 print(joined_result)
@@ -228,18 +228,62 @@ print(joined_result)
 
 ## Use a set comprehension to get a set of all words (combinations of characters separated by whitespace) among the descriptions in the descriptions_fav_users list. Save the resulting set in a variable called description_words.
 
+words_list = []
+for each_line in descriptions_fav_users: 
+	words = each_line.split()
+	for word in words: 
+		words_list.append(word)
+
+description_words = {word for word in words_list}
+print(description_words)
 
 ## Use a Counter in the collections library to find the most common character among all of the descriptions in the descriptions_fav_users list. Save that most common character in a variable called most_common_char. Break any tie alphabetically (but using a Counter will do a lot of work for you...).
+c = collections.Counter()
+for element in descriptions_fav_users:
+	split_element = element.split()
+	for word in split_element: 
+		for char in list(word): 
+			c[char] += 1
+	
+
+print("---------------most common---------")
+most_common_char = sorted(c.most_common(), key = lambda x: (x[-1], x[0]), reverse = True) [0][0]
+print(most_common_char)
+
+
 
 
 ## Putting it all together...
 # Write code to create a dictionary whose keys are Twitter screen names and whose associated values are lists of tweet texts that that user posted. You may need to make additional queries to your database! To do this, you can use, and must use at least one of: the DefaultDict container in the collections library, a dictionary comprehension, list comprehension(s). Y
 # You should save the final dictionary in a variable called twitter_info_diction.
 
+q6 = "SELECT Users.screen_name, Tweets.tweet_text FROM Tweets INNER JOIN Users ON Tweets.user_id = Users.user_id"
+db_cur.execute(q6)
+screen_names_and_tweet_texts_tuples = db_cur.fetchall()
+for each_tuple in screen_names_and_tweet_texts_tuples:
+	print (each_tuple)
+	
+
+
+
+
+twitter_info_dd = collections.defaultdict(list)
+for each_screen_name, each_tweet_text in screen_names_and_tweet_texts_tuples:
+	twitter_info_dd[each_screen_name].append(each_tweet_text)
+
+twitter_info_diction = dict(twitter_info_dd)
+
+print (twitter_info_diction.keys())
+for k, v in twitter_info_diction.items():
+	print (k, v)
+
+
+
+
 
 
 ### IMPORTANT: MAKE SURE TO CLOSE YOUR DATABASE CONNECTION AT THE END OF THE FILE HERE SO YOU DO NOT LOCK YOUR DATABASE (it's fixable, but it's a pain). ###
-
+db_conn.close()
 
 ###### TESTS APPEAR BELOW THIS LINE ######
 ###### Note that the tests are necessary to pass, but not sufficient -- must make sure you've followed the instructions accurately! ######
@@ -247,8 +291,10 @@ print("\n\nBELOW THIS LINE IS OUTPUT FROM TESTS:\n")
 
 class Task1(unittest.TestCase):
 	def test_umich_caching(self):
-		fstr = open("SI206_project3_cache.json","r").read()
-		self.assertTrue("umich" in fstr)
+		fstr = open("SI206_project3_cache.json","r")
+		fileref = fstr.read()
+		fstr.close()
+		self.assertTrue("umich" in fileref)
 	def test_get_user_tweets(self):
 		res = get_user_tweets("umsi")
 		self.assertEqual(type(res),type(["hi",3]))
