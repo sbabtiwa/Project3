@@ -117,16 +117,22 @@ description = []
 
 
 for x in umich_tweets:
+ 
+	user_id.append(x["user"]["id_str"])
+	screen_name.append(x["user"]["screen_name"])
+	num_favs.append(x["user"]["favourites_count"])
+	description.append(x["user"]["description"])
+
 	for element in x["entities"]["user_mentions"]:
 		user_id.append(element["id_str"])
 		screen_name.append(element["screen_name"])
 		unique_identifier = "twitter_{}".format(element["screen_name"])
 		print(unique_identifier)
 		if unique_identifier in CACHE_DICT: 
-			print("Using cached data for", element["screen_name"])
+			print("Using cached user data for", element["screen_name"])
 			pass 
 		else:
-			print("Getting new data from web for", element["screen_name"])
+			print("Getting new user data from web for", element["screen_name"])
 			user_favs = api.favorites(element["screen_name"])
 			user_description = api.get_user(element["screen_name"])
 			CACHE_DICT[unique_identifier] = {}
@@ -142,9 +148,7 @@ all_users = zip(user_id, screen_name, num_favs, description)
 list_all_users = list(all_users)
 insert_user_data = "INSERT OR IGNORE INTO Users Values (?,?,?,?)"
 for y in list_all_users:
-	print(y)
 	db_cur.execute(insert_user_data, y)
-
 
 
 
@@ -163,10 +167,8 @@ for element in umich_tweets:
 
 all_tweets = zip(tweet_id, tweet_text, time_posted, retweets, user_id)
 list_all_tweets = list(all_tweets)
-print (len(list_all_tweets))
 insert_tweet_data = "INSERT INTO Tweets Values (?,?,?,?,?)"
 for x in list_all_tweets:
-	print(x) 
 	db_cur.execute(insert_tweet_data, x)
 
 db_conn.commit()
@@ -177,52 +179,44 @@ db_conn.commit()
 # All of the following sub-tasks require writing SQL statements and executing them using Python.
 
 # Make a query to select all of the records in the Users database. Save the list of tuples in a variable called users_info.
-print("USERS INFO")
 
 q1 = "SELECT * FROM Users"
 db_cur.execute(q1)
 users_info = db_cur.fetchall()
-print(users_info)
+
 
 
 # Make a query to select all of the user screen names from the database. Save a resulting list of strings (NOT tuples, the strings inside them!) in the variable screen_names. HINT: a list comprehension will make this easier to complete!
-
-print("SCREEN NAMES")
 
 q2 = "SELECT screen_name FROM Users"
 db_cur.execute(q2)
 all_screen_names = db_cur.fetchall()
 screen_names = [element[0] for element in all_screen_names]
-print(all_screen_names)
+
 
 
 # Make a query to select all of the tweets (full rows of tweet information) that have been retweeted more than 25 times. Save the result (a list of tuples, or an empty list) in a variable called more_than_25_rts.
 
-print("MORE 25")
-
 q3 = "SELECT * FROM Tweets WHERE retweets > 5"
 db_cur.execute(q3)
 more_than_25_rts = db_cur.fetchall()
-print(more_than_25_rts)
+
 
 # Make a query to select all the descriptions (descriptions only) of the users who have favorited more than 25 tweets. Access all those strings, and save them in a variable called descriptions_fav_users, which should ultimately be a list of strings.
-print("DESCRIPTIONS")
 
 q4 = "SELECT description FROM Users WHERE num_favs > 5"
 db_cur.execute(q4)
 all_descriptions = db_cur.fetchall()
 descriptions_fav_users = [x[0] for x in all_descriptions] 
-print(descriptions_fav_users)
+
 
 
 # Make a query using an INNER JOIN to get a list of tuples with 2 elements in each tuple: the user screenname and the text of the tweet -- for each tweet that has been retweeted more than 50 times. Save the resulting list of tuples in a variable called joined_result.
-print("JOINED RESULT")
 
 q5 = "SELECT Users.screen_name, Tweets.tweet_text FROM Tweets INNER JOIN Users ON Tweets.user_id = Users.user_id WHERE Tweets.retweets > 5"
 db_cur.execute(q5)
 joined_result = db_cur.fetchall()
-print(joined_result)
-
+#print(joined_result)
 
 ## Task 4 - Manipulating data with comprehensions & libraries
 
@@ -235,7 +229,7 @@ for each_line in descriptions_fav_users:
 		words_list.append(word)
 
 description_words = {word for word in words_list}
-print(description_words)
+
 
 ## Use a Counter in the collections library to find the most common character among all of the descriptions in the descriptions_fav_users list. Save that most common character in a variable called most_common_char. Break any tie alphabetically (but using a Counter will do a lot of work for you...).
 c = collections.Counter()
@@ -245,12 +239,7 @@ for element in descriptions_fav_users:
 		for char in list(word): 
 			c[char] += 1
 	
-
-print("---------------most common---------")
 most_common_char = sorted(c.most_common(), key = lambda x: (x[-1], x[0]), reverse = True) [0][0]
-print(most_common_char)
-
-
 
 
 ## Putting it all together...
@@ -260,26 +249,15 @@ print(most_common_char)
 q6 = "SELECT Users.screen_name, Tweets.tweet_text FROM Tweets INNER JOIN Users ON Tweets.user_id = Users.user_id"
 db_cur.execute(q6)
 screen_names_and_tweet_texts_tuples = db_cur.fetchall()
-for each_tuple in screen_names_and_tweet_texts_tuples:
-	print (each_tuple)
-	
-
-
-
+#for each_tuple in screen_names_and_tweet_texts_tuples: 
+#	print(each_tuple)
 
 twitter_info_dd = collections.defaultdict(list)
 for each_screen_name, each_tweet_text in screen_names_and_tweet_texts_tuples:
 	twitter_info_dd[each_screen_name].append(each_tweet_text)
 
 twitter_info_diction = dict(twitter_info_dd)
-
-print (twitter_info_diction.keys())
-for k, v in twitter_info_diction.items():
-	print (k, v)
-
-
-
-
+#print(twitter_info_diction)
 
 
 ### IMPORTANT: MAKE SURE TO CLOSE YOUR DATABASE CONNECTION AT THE END OF THE FILE HERE SO YOU DO NOT LOCK YOUR DATABASE (it's fixable, but it's a pain). ###
